@@ -33,10 +33,12 @@ package {
 	import crossbridge.lua.__lua_objrefs;
 	import crossbridge.lua.LuaState;
 	import crossbridge.lua.LuaReference;
+	import crossbridge.lua.LuaTextField;
 
 	import flash.display.SimpleButton;
 	import flash.display.Sprite;
 	import flash.events.Event;
+	import flash.text.Font;
 	import flash.text.TextField;
 	import flash.text.TextFieldType;
 	import flash.text.TextFormat;
@@ -45,10 +47,11 @@ package {
 
 [SWF(width="800", height="600", backgroundColor="#999999", frameRate="60")]
 	public class Main extends Sprite implements ISpecialFile {
+	
 
 		internal var luastate:LuaState;
 
-		private var inbox:TextField;
+		private var inbox:LuaTextField;
 
 		private var outbox:TextField;
 		
@@ -64,7 +67,7 @@ package {
 			removeEventListener(Event.ADDED_TO_STAGE, appInit);
 
 			runtimelabel = getTextField(5, 5, 790, 20);
-			inbox = getTextField(5, 30, 790, 275);
+			inbox = getLuaTextField(5, 30, 790, 275);
 			outbox = getTextField(5, 310, 790, 275);
 			outArray = new Array();
 
@@ -80,20 +83,35 @@ package {
 		}
 
 		private function getTextField(x:int, y:int, w:int, h:int):TextField {
-				var result:TextField = new TextField();
-				result.width = w;
-				result.height = h;
-				result.x = x;
-				result.y = y;
-				result.multiline = true;
-				result.selectable = true;
-				result.wordWrap = true;
-				result.background = true;
-				result.backgroundColor = 0xFFFFFF;
-				addChild(result);
-				const tf:TextFormat = new TextFormat("Courier New", 12, 0x000000);
-				result.defaultTextFormat = tf;
-				return result;
+			var result:TextField = new TextField();
+			result.width = w;
+			result.height = h;
+			result.x = x;
+			result.y = y;
+			result.multiline = true;
+			result.selectable = true;
+			result.wordWrap = true;
+			result.background = true;
+			result.backgroundColor = 0xFFFFFF;
+			addChild(result);
+			const tf:TextFormat = new TextFormat("Courier New", 12, 0x000000);
+			result.defaultTextFormat = tf;
+			return result;
+		}
+		
+		private function getLuaTextField(x:int, y:int, w:int, h:int):LuaTextField {
+			var result:LuaTextField = new LuaTextField();
+			result.width = w;
+			result.height = h;
+			result.x = x;
+			result.y = y;
+			result.multiline = true;
+			result.selectable = true;
+			//result.wordWrap = true;
+			result.background = true;
+			result.backgroundColor = 0xFFFFFF;
+			addChild(result);
+			return result;
 		}
 	
 		private static function getOutputFromArray(arr:Array):String {
@@ -124,7 +142,7 @@ package {
 			return buff.readUTFBytes(len);
 		}
 
-    internal function runScript(event:Event = null):void {
+		internal function runScript(event:Event = null):void {
 			outbox.text = "";
 			luastate = new LuaState();
 			luastate.setGlobal("AS3Test", Test);
@@ -172,7 +190,7 @@ package {
 			pushOutput();
 			
 			luastate.close();
-    }
+		}
 	
 		private function pushOutput() : void {
 			outbox.text += outArray.join("");

@@ -64,7 +64,7 @@ package_as3(
 	"      var fnptr:int = Lua.push_flashref(L);\n"
 	"      __lua_objrefs[fnptr] = obj;\n"
 	"    } else if (obj is LuaReference) {\n"
-	"      Lua.lua_rawgeti(L,LUA_REGISTRYINDEX,obj.ref);\n"
+	"      Lua.lua_rawgeti(L,LuaEnums.LUA_REGISTRYINDEX,obj.ref);\n"
 	"    } else if (obj == null) {\n"
 	"      Lua.lua_pushnil(L);\n"
 	"    } else {\n"

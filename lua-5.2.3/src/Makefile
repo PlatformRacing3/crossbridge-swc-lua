@@ -124,7 +124,7 @@ flash:
 	PATH="$(FLASCC)/usr/bin:$(PATH)" $(MAKE) liblua.a SYSCFLAGS="-DLUA_USE_POSIX" MYCFLAGS="-emit-llvm"
 	"$(FLASCC)/usr/bin/swig" -as3 -module Lua -outdir . -includeall -ignoremissing as3api.h
 	#java -jar "$(NP_FLASCC)/usr/lib/asc2.jar" -import "$(NP_FLASCC)/usr/lib/builtin.abc" -import "$(NP_FLASCC)/usr/lib/playerglobal.abc" LuaReference.as
-	java -jar "$(NP_FLASCC)/usr/lib/asc2.jar" -merge -md -AS3 -optimize -import "$(NP_FLASCC)/usr/lib/builtin.abc" -import "$(NP_FLASCC)/usr/lib/playerglobal.abc" Lua.as LuaReference.as LuaEnums.as LuaState.as -out Lua
+	java -jar "$(NP_FLASCC)/usr/lib/asc2.jar" -merge -md -AS3 -optimize -import "$(NP_FLASCC)/usr/lib/builtin.abc" -import "$(NP_FLASCC)/usr/lib/playerglobal.abc" Lua.as LuaReference.as LuaEnums.as LuaState.as LuaTextField.as -out Lua
 	"$(FLASCC)/usr/bin/gcc" $(OPT_FLAGS) -c as3api_wrap.c
 	"$(FLASCC)/usr/bin/nm" -f posix as3api_wrap.o | awk '{print $$1}' | sed 's/_//' > exports.txt
 	echo "_start1" >> exports.txt
