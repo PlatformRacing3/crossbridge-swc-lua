@@ -334,6 +334,7 @@ package crossbridge.lua
 			 */
 			 
 			// Actually, maybe we can use caretIndex to do less work?
+			//trace("text input event");
 			this.charsAdded = evt.text.length;
 			this.previousLength = this.text.length;
 		}
@@ -346,10 +347,25 @@ package crossbridge.lua
 			//trace("currentLength: " + currentLength);
 			//trace("caretIndex: " + this.caretIndex);
 			//trace("inputGuess: \"" + this.text.substr(this.caretIndex-this.charsAdded, this.charsAdded) + "\"");
+			//trace("change event");
 			var rangeEnd:int = this.caretIndex;
-			this.charsOffset = currentLength - previousLength;
-			this.dirtyRangeStart = rangeEnd - charsAdded;
-			this.dirtyRangeEnd = rangeEnd;
+			if (this.dirtyRangeStart == -1) {
+				this.charsOffset = (currentLength - previousLength);
+				this.dirtyRangeStart = rangeEnd - this.charsAdded;
+				this.dirtyRangeEnd = rangeEnd;
+			} else { // this shit is dubious as fuck. It seems to work great though.
+				var thisRangeStart = rangeEnd - this.charsAdded;
+				var charDiff:int = (currentLength - previousLength);
+				this.charsOffset += charDiff;
+				if (rangeEnd > this.dirtyRangeEnd) {
+					this.dirtyRangeEnd = rangeEnd;
+				} else {
+					this.dirtyRangeEnd += this.charsAdded;
+				}
+				if (thisRangeStart < this.dirtyRangeStart) {
+					this.dirtyRangeStart = thisRangeStart;
+				}
+			}
 			previousLength = currentLength;
 			rescan = true;
 		}
