@@ -131,7 +131,7 @@ package crossbridge.lua
 		private static const hexNum:String = "abcdefABCDEF"; // valid "digits" of hex literals.
 		private static const negativeHighlightChars:String = "+-*/%^={([,<>";
 		private static const negativeHighlightSkip:String = " \n\r\t";
-		
+				
 		private static const colorDefault:Object = {
 			"base"   : 0x000000,
 			"string" : 0x006634,
@@ -327,14 +327,7 @@ package crossbridge.lua
 		
 		private function textInput_Listen(evt:TextEvent) : void
 		{
-			/* 
-			 * If characters are replaced, we need to invalidate the entire cache.
-			 * otherwise, characters may show up with the wrong highlighting because
-			 * we assume that they were already highlighted when they weren't.
-			 */
-			 
-			// Actually, maybe we can use caretIndex to do less work?
-			//trace("text input event");
+			// some information we need.
 			this.charsAdded = evt.text.length;
 			this.previousLength = this.text.length;
 		}
@@ -342,12 +335,6 @@ package crossbridge.lua
 		private function change_Listen(evt:Event) : void
 		{
 			var currentLength = this.text.length;
-			//trace("+chars: " + this.charsAdded);
-			//trace("prevLength: " + this.previousLength);
-			//trace("currentLength: " + currentLength);
-			//trace("caretIndex: " + this.caretIndex);
-			//trace("inputGuess: \"" + this.text.substr(this.caretIndex-this.charsAdded, this.charsAdded) + "\"");
-			//trace("change event");
 			var rangeEnd:int = this.caretIndex;
 			if (this.dirtyRangeStart == -1) {
 				this.charsOffset = (currentLength - previousLength);
@@ -457,6 +444,7 @@ package crossbridge.lua
 				var rect:Rectangle;
 				var rect2:Rectangle;
 				//trace("[");
+				//trace("p1: " + getTimer());
 				for (i = seekScanIndex(this.scanData,minChar); i < this.scanData.length; i++) {
 					entry = this.scanData[i];
 					if (entry.charEnd <= minChar) {continue;}
@@ -465,7 +453,9 @@ package crossbridge.lua
 					if (entry.highlighted) {continue;}
 					// This shit sucks but it's the only way.
 					rect = null;
-					for (j = entry.charStart; j < entry.charEnd; j++) {
+					var rangeMin:int = Math.max(entry.charStart, minChar); // clamp to this range so the check does not take 1000 years.
+					var rangeMax:int = Math.min(entry.charEnd, maxChar);
+					for (j = rangeMin; j < rangeMax; j++) {
 						rect = this.getCharBoundaries(j);
 						if (rect != null) {break;}
 					}
@@ -475,31 +465,52 @@ package crossbridge.lua
 						toHighlight.push(entry);
 						continue;
 					}
-					for (j = entry.charEnd - 1; j >= entry.charStart; j--) {
+					//trace("    part2");
+					if (rect.left < maxX && rect.right > minX) {
+						toHighlight.push(entry);
+						continue;
+					}
+					for (j = rangeMax - 1; j >= rangeMin; j--) {
 						rect2 = this.getCharBoundaries(j);
 						if (rect2 != null) {break;}
 					}
 					// rect2 will have found something.
 					rect = rect.union(rect2);
+					//trace("    part3");
 					if (rect.left > maxX || rect.right < minX) {continue;}
-					//trace("  [" + i + "] = " + entry.toString() + ",");
 					toHighlight.push(entry);
 				}
 				//trace("]");
+				//trace("p2: " + getTimer());
 				if (this.dirtyRangeStart >= 0 || toHighlight.length > 0) {
 					if (!this.fontEmbedded) {super.embedFonts = true;}
 					didWork = true;
 					if (this.dirtyRangeStart >= 0) {
 						//trace(" clear range [" + this.dirtyRangeStart + ", " + this.dirtyRangeEnd + "]");
-						this.setTextFormat(formatList[FMT_BASE], this.dirtyRangeStart, this.dirtyRangeEnd);
+						if (toHighlight.length == 1) { // adobe scout says this was a good optimization for one specific case involving a 70k character string.
+							entry = toHighlight[0];
+							if (entry.charStart == this.dirtyRangeStart && entry.charEnd == this.dirtyRangeEnd) {
+								// skip unhighlight
+							} else if (entry.charStart == this.dirtyRangeStart) {
+								this.setTextFormat(formatList[FMT_BASE], entry.charEnd, this.dirtyRangeEnd);
+							} else if (entry.charEnd == this.dirtyRangeEnd) {
+								this.setTextFormat(formatList[FMT_BASE], this.dirtyRangeStart, entry.charStart);
+							} else {
+								this.setTextFormat(formatList[FMT_BASE], this.dirtyRangeStart, this.dirtyRangeEnd);
+							}
+						} else {
+							this.setTextFormat(formatList[FMT_BASE], this.dirtyRangeStart, this.dirtyRangeEnd);
+						}
 						this.dirtyRangeStart = -1; this.dirtyRangeEnd = -1;
 					}
 					for (i = 0; i < toHighlight.length; i++) {
 						entry = toHighlight[i];
+						//trace("  [" + i + "] = " + entry.toString() + ",");
 						entry.highlighted = true;
 						this.setTextFormat(formatList[entry.formatType], entry.charStart, entry.charEnd);
 					}
 				}
+				//trace("p3: " + getTimer());
 			} catch(e:Error) {
 				trace(e.toString());
 				throw e;
