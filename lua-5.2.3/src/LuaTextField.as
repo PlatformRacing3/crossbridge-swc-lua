@@ -134,17 +134,19 @@ package crossbridge.lua
 				
 		private static const colorDefault:Object = {
 			"base"   : 0x000000,
-			"string" : 0x006634,
-			"number" : 0x953A05,
-			"keyword": 0xA8232D,
-			"libword": 0x9A277D,
-			"comment": 0x686868
+			"string" : 0x027240,//0x006634,
+			"number" : 0x6C21C6,//0x953A05,
+			"keyword": 0x002DD6,//0xA8232D,
+			"libword": 0xBE1A61,//0x9A277D,
+			"comment": 0x6A6F81//0x686868
 		};
 		
 		private static const IdentifierDictionary:Dictionary = new Dictionary();
 		private static const keyWordList:Vector.<String> = new <String>["break", "goto", "do", "end", "while", "repeat", "until", "if", "then", "elseif", "else",
-			"for", "in", "function", "local", "return", "nil", "false", "true", "and", "or", "not"
+			"for", "in", "function", "local", "return", "and", "or", "not"
 		];
+		
+		private static const literalWordList:Vector.<String> = new <String>["nil", "false", "true"];
 		
 		private static const libWordList:Vector.<String> = new <String>["_G", "assert", "bit32", "buffer", "coroutine", "dofile", "debug", "error", "flash", "getmetatable",
 			"io", "ipairs", "load", "loadfile", "loadstring", "math", "module", "next", "os", "package", "pairs", "pcall", "print", "random", "rawequal", "rawget", "rawset",
@@ -189,10 +191,13 @@ package crossbridge.lua
 				negativeHighlight[negativeHighlightSkip.charCodeAt(i)] = 1;
 			}
 			for (i = 0; i < keyWordList.length; i++) {
-				IdentifierDictionary[keyWordList[i]] = IDENTIFIER_KEYWORD;
+				IdentifierDictionary[keyWordList[i]] = FMT_KEYWORD;
+			}
+			for (i = 0; i < literalWordList.length; i++) {
+				IdentifierDictionary[literalWordList[i]] = FMT_NUMBER_LITERAL; // steal number literal color for these.
 			}
 			for (i = 0; i < libWordList.length; i++) {
-				IdentifierDictionary[libWordList[i]] = IDENTIFIER_LIBWORD;
+				IdentifierDictionary[libWordList[i]] = FMT_LIBRARY_WORD;
 			}
 		}
 		
@@ -768,10 +773,8 @@ package crossbridge.lua
 							if (id_type == null) {
 								earlyEnd = this.pushScanData(charStart, this.charAt, FMT_BASE);
 							} else {
-								if (id_type == IDENTIFIER_KEYWORD) {
-									earlyEnd = this.pushScanData(charStart, this.charAt, FMT_KEYWORD);
-								} else if (id_type == IDENTIFIER_LIBWORD) {
-									earlyEnd = this.pushScanData(charStart, this.charAt, FMT_LIBRARY_WORD);
+								if (id_type is Number) {
+									earlyEnd = this.pushScanData(charStart, this.charAt, id_type);
 								} else { // in case someone catches some weird shit out of the dictionary idk.
 									earlyEnd = this.pushScanData(charStart, this.charAt, FMT_BASE);
 								}
