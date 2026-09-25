@@ -134,11 +134,11 @@ package crossbridge.lua
 				
 		private static const colorDefault:Object = {
 			"base"   : 0x000000,
-			"string" : 0x027240,//0x006634,
-			"number" : 0x6C21C6,//0x953A05,
-			"keyword": 0x002DD6,//0xA8232D,
-			"libword": 0xBE1A61,//0x9A277D,
-			"comment": 0x6A6F81//0x686868
+			"string" : 0x027240, //0x006634,
+			"number" : 0x6C21C6, //0x953A05,
+			"keyword": 0x002DD6, //0xA8232D,
+			"libword": 0xBE1A61, //0x9A277D,
+			"comment": 0x6A6F81  //0x686868
 		};
 		
 		private static const IdentifierDictionary:Dictionary = new Dictionary();
@@ -723,7 +723,9 @@ package crossbridge.lua
 									ptr = this.scanComment(ptr);
 									earlyEnd = this.pushScanData(charStart, this.charAt, FMT_COMMENT);
 									break;
-								} else if (charType[lookahead] == CHARTYPE_NUMSTART) {
+								} else if (charType[lookahead] == CHARTYPE_NUMSTART || 
+										  (lookahead == CHAR_DOT && charType[li8(ptr + 2)] == CHARTYPE_NUMSTART)
+								) {
 									ptr2 = ptr;
 									var nHighlightType:int = 1;
 									while (nHighlightType == 1) { // skip while it's 1.
@@ -747,6 +749,13 @@ package crossbridge.lua
 								ptr = this.scanShortStr(ptr);
 								earlyEnd = this.pushScanData(charStart, this.charAt, FMT_STRING_LITERAL);
 								break;
+							} else if (char == CHAR_DOT) {
+								lookahead = li8(ptr + 1);
+								if (charType[lookahead] == CHARTYPE_NUMSTART) {
+									ptr = this.scanNumberLiteral(ptr);
+									earlyEnd = this.pushScanData(charStart, this.charAt, FMT_NUMBER_LITERAL);
+									break;
+								} 
 							} else if (char == CHAR_LBRACKET) {
 								lookahead = li8(ptr + 1);
 								if (lookahead == CHAR_LBRACKET || lookahead == CHAR_EQUAL) {
@@ -851,12 +860,14 @@ package crossbridge.lua
 						if (lookahead == CHAR_DASH) {
 							//trace("    end by two dashes");
 							return ptr;
-						} else if (charType[lookahead] == CHARTYPE_NUMSTART) {
+						} else if (charType[lookahead] == CHARTYPE_NUMSTART || lookahead == CHAR_DOT) {
 							//trace("    end by numerical");
 							return ptr;
 						}
 					} else if (char == CHAR_QUOTATION || char == CHAR_APOSTROPHE) {
 						//trace("    end by quotation / apostrophe");
+						return ptr;
+					} else if (char == CHAR_DOT) {
 						return ptr;
 					} else if (char == CHAR_LBRACKET) {
 						lookahead = li8(ptr + 1)
