@@ -820,7 +820,7 @@ package crossbridge.lua
 							var id_type:* = IdentifierDictionary[str];
 							if (id_type == null) {
 								// check if currentEnv needs reset.
-								if (li8(ptr - 1) != CHAR_DOT) {
+								if (ptr > str_ptr && li8(ptr - 1) != CHAR_DOT) {
 									currentEnv = globals;
 								}
 								// check against currentEnv.
