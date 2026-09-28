@@ -148,7 +148,7 @@ package crossbridge.lua
 		
 		private static const literalWordList:Vector.<String> = new <String>["nil", "false", "true"];
 		
-		private static const globals:Dictionary = new Dictionary();
+		private static var globals:Dictionary = new Dictionary();
 		
 		private static const nullEnv:Dictionary = new Dictionary(); // empty dictionary.
 		
@@ -261,6 +261,15 @@ package crossbridge.lua
 			for (i = 0; i < words.length; i++) {
 				delete dict[words[i]];
 			}
+		}
+		
+		/*
+			Removes all words from the environment. Good if you want to set up your own.
+			If you have an active LuaTextField, you may want to force a rescan.
+		*/
+		public static function clearLibraryWords() : void
+		{
+			globals = new Dictionary();
 		}
 		
 		private var formatList:Vector.<TextFormat> = new Vector.<TextFormat>(6, true);
