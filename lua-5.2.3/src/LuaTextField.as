@@ -148,26 +148,17 @@ package crossbridge.lua
 		
 		private static const literalWordList:Vector.<String> = new <String>["nil", "false", "true"];
 		
-		private static const libWordList:Vector.<String> = new <String>["_G", "assert", "bit32", "buffer", "coroutine", "dofile", "debug", "error", "flash", "getmetatable",
+		private static const globals:Dictionary = new Dictionary();
+		
+		private static const nullEnv:Dictionary = new Dictionary(); // empty dictionary.
+		
+		/*private static const globalWordList:Vector.<String> = new <String>["_G", "assert", "bit32", "buffer", "coroutine", "dofile", "debug", "error", "flash", "getmetatable",
 			"io", "ipairs", "load", "loadfile", "loadstring", "math", "module", "next", "os", "package", "pairs", "pcall", "print", "random", "rawequal", "rawget", "rawset",
 			"require", "select", "setmetatable", "string", "table", "tonumber", "tostring", "type", "unpack", "xpcall",
-			"arshift", "band", "bnot", "bor", "btest", "bxor", "extract", "lrotate", "lshift", "replace", "rrotate", "rshift",
-			"copy", "fill", "fromstring", "len", "new", "readbits", "readf32", "readf64", "readi16", "readi32", "readi8", "readstring", "readu16", "readu32", "readu8",
-			  "writebits", "writef32", "writef64", "writei16", "writei32", "writei8", "writestring", "writeu16", "writeu32", "writeu8",
-			"create", "resume", "running", "status", "wrap", "yield",
-			"debug", "gethook", "getinfo", "getlocal", "getmetatable", "getregistry", "getupvalue", "getuservalue", "sethook", "setlocal",
-			  "setmetatable", "setupvalue", "setuservalue", "traceback", "upvalueid", "upvaluejoin",
-			"abs", "acos", "asin", "atan", "atan2", "ceil", "clamp", "cos", "cosh", "deg", "exp", "floor", "fmod", "frexp", "huge", "isnan", "ldexp", "lerp", "log",
-			  "log10", "max", "min", "modf", "nan", "pi", "pow", "rad", "random", "randomseed", "round", "sign", "sin", "sinh", "sqrt", "tan", "tanh", 
-			"getclass", "gettimer", "registerConversion", "toarray", "toobject", "trace",
-			"clock", "date", "difftime", "execute", "exit", "getenv", "remove", "rename", "setlocale", "time", "tmpname",
-			"swap",
-			"byte", "char", "dump", "find", "format", "gmatch", "gsub", "len", "lower", "match", "rep", "reverse", "sub", "upper", 
-			"concat", "create", "find", "insert", "maxn", "pack", "remove", "sort", "unpack", 
-		];
+		];*/
 		
 		
-		{
+		private static function Initialize() {
 			var i:int = 0;
 			for (i = 0; i < separator.length; i++) {
 				charSeparator[separator.charCodeAt(i)] = 1;
@@ -196,8 +187,79 @@ package crossbridge.lua
 			for (i = 0; i < literalWordList.length; i++) {
 				IdentifierDictionary[literalWordList[i]] = FMT_NUMBER_LITERAL; // steal number literal color for these.
 			}
-			for (i = 0; i < libWordList.length; i++) {
-				IdentifierDictionary[libWordList[i]] = FMT_LIBRARY_WORD;
+			// set up all our words
+			addLibraryWords(null,["_G","_VERSION","assert","bit32","buffer","collectgarbage","coroutine","debug","dofile","error","flash","getmetatable",
+									"io","ipairs","load","loadfile","loadstring","math","module","next","os","package","pairs","pcall","print","random","rawequal",
+									"rawget","rawlen","rawset","require","select","setmetatable","string","table","tonumber","tostring","type","unpack","xpcall"]);
+			addLibraryWords("bit32", ["arshift","band","bnot","bor","btest","bxor","extract","lrotate","lshift","replace","rrotate","rshift"]);
+			addLibraryWords("buffer", ["copy","fill","fromstring","len","new","readbits","readf32","readf64","readi16","readi32","readi8","readstring","readu16",
+									"readu32","readu8","writebits","writef32","writef64","writei16","writei32","writei8","writestring","writeu16","writeu32","writeu8"]);
+			addLibraryWords("coroutine", ["create","resume","running","status","wrap","yield"]);
+			addLibraryWords("debug", ["debug","gethook","getinfo","getlocal","getmetatable","getregistry","getupvalue","getuservalue","sethook","setlocal","setmetatable",
+									"setupvalue","setuservalue","traceback","upvalueid","upvaluejoin"]);
+			addLibraryWords("flash", ["getclass","gettimer","new","registerConversion","toarray","toobject","trace","type"]);
+			addLibraryWords("io", ["close","flush","input","lines","open","output","popen","read","stderr","stdin","stdout","tmpfile","type","write"]);
+			addLibraryWords("math",["abs","acos","asin","atan","atan2","ceil","clamp","cos","cosh","deg","exp","floor","fmod","frexp","huge","isnan","ldexp","lerp",
+									"log","log10","max","min","modf","nan","pi","pow","rad","random","randomseed","round","sign","sin","sinh","sqrt","tan","tanh"]);
+			addLibraryWords("os",["clock","date","difftime","execute","exit","getenv","remove","rename","setlocale","time","tmpname"]);
+			addLibraryWords("package",["config","cpath","loaded","loaders","loadlib","path","preload","searchers","searchpath","seeall"]);
+			addLibraryWords("random",["copy","new","swap"]);
+			addLibraryWords("string",["byte","char","dump","find","format","gmatch","gsub","len","lower","match","rep","reverse","sub","upper"]);
+			addLibraryWords("table",["concat","create","find","insert","maxn","pack","remove","sort","unpack"]);
+		}
+		
+		{
+			Initialize();
+		}
+		
+		/*
+			Adds all words in the array to the list of library words.
+			If you have an active LuaTextField, you may want to force a rescan.
+			
+			ex. addLibaryWords(null, ["assert", ..., "xpcall"]); // adds to global table.
+			ex. addLibaryWords("math",["abs", ..., "tanh"]); // adds to math table
+			ex. addLibraryWords("game.level",["stuff"]); // adds to game.level
+		*/
+		public static function addLibraryWords(table:String = null, words:Array = null) : void
+		{
+			if (words == null) {throw new Error("Expected non-null word array", 1009);}
+			var dict:Dictionary = globals;
+			var i:int;
+			if (table) {
+				var arr:Array = table.split(".");
+				for (i = 0; i < arr.length; i++) {
+					var value:* = dict[arr[i]];
+					if (value is Dictionary) {
+						dict = dict[arr[i]];
+					} else {
+						value = new Dictionary();
+						dict[arr[i]] = value;
+						dict = value;
+					}
+				}
+			}
+			for (i = 0; i < words.length; i++) {
+				dict[words[i]] = FMT_LIBRARY_WORD;
+			}
+		}
+		
+		/*
+			Removes all words in the array from the list of library words.
+			If you have an active LuaTextField, you may want to force a rescan.
+		*/
+		public static function removeLibraryWords(table:String = null, words:Array = null) : void
+		{
+			if (words == null) {throw new Error("Expected non-null word array", 1009);}
+			var dict:Dictionary = globals;
+			var i:int;
+			if (table) {
+				var arr:Array = table.split(".");
+				for (i = 0; i < arr.length; i++) {
+					dict = dict[arr[i]];
+				}
+			}
+			for (i = 0; i < words.length; i++) {
+				delete dict[words[i]];
 			}
 		}
 		
@@ -240,30 +302,6 @@ package crossbridge.lua
 		override public function set embedFonts(value:Boolean):void {
 			super.embedFonts = value;
 			this.fontEmbedded = value;
-		}
-		
-		/*
-			Adds all words in the array to the list of library words.
-			If you have an active LuaTextField, you may want to force a rescan.
-		*/
-		public static function addLibraryWords(words:Array) : void
-		{
-			var i:int = 0;
-			for (i = 0; i < words.length; i++) {
-				IdentifierDictionary[words[i]] = IDENTIFIER_LIBWORD;
-			}
-		}
-		
-		/*
-			Removes all words in the array from the list of library words.
-			If you have an active LuaTextField, you may want to force a rescan.
-		*/
-		public static function removeLibraryWords(words:Array) : void
-		{
-			var i:int = 0;
-			for (i = 0; i < words.length; i++) {
-				delete IdentifierDictionary[words[i]];
-			}
 		}
 		
 		override public function set text(value:String):void {
@@ -584,7 +622,8 @@ package crossbridge.lua
 						var entry:LTF_FormatEntry = this.scanData[scanIndex];
 						entry.highlighted = false;
 						entry.setData(spanCharStart, spanCharEnd, spanFormatType);
-						if (spanCharStart > this.dirtyRangeEnd && lastScanIndex != -2) { // -2 indicates out of range of last scan.
+						var isDot:Boolean = spanFormatType == FMT_BASE && (spanCharEnd - spanCharStart) == 1 && this.text.charCodeAt(spanCharStart) == CHAR_DOT;
+						if (spanCharStart > this.dirtyRangeEnd && lastScanIndex != -2 && spanFormatType != FMT_LIBRARY_WORD && !isDot) { // -2 indicates out of range of last scan.
 							if (lastScanIndex == -1) {
 								lastScanIndex = seekScanIndex(this.lastScanData, spanCharStart - this.charsOffset);
 							}
@@ -664,7 +703,7 @@ package crossbridge.lua
 			========================
 		*/
 		
-		
+		private var currentEnv:Dictionary = globals;
 		
 		private function scanText() : void
 		{
@@ -692,6 +731,7 @@ package crossbridge.lua
 				//trace("error?");
 				ptr = seekCharIndex(ptr, this.dirtyRangeStart);
 				this.charAt = this.dirtyRangeStart;
+				this.recoverIdentifierEnvironment();
 				var lookahead:int = 0;
 				var earlyEnd:Boolean = false;
 				while (true) {
@@ -777,10 +817,26 @@ package crossbridge.lua
 						case CHARTYPE_IDSTART: {
 							ptr2 = this.scanIdentifier(ptr);
 							var str:String = CModule.readString(ptr, ptr2-ptr);
-							ptr = ptr2;
 							var id_type:* = IdentifierDictionary[str];
 							if (id_type == null) {
-								earlyEnd = this.pushScanData(charStart, this.charAt, FMT_BASE);
+								// check if currentEnv needs reset.
+								if (li8(ptr - 1) != CHAR_DOT) {
+									currentEnv = globals;
+								}
+								// check against currentEnv.
+								if (currentEnv != nullEnv) {
+									id_type = currentEnv[str];
+								}
+								if (id_type == null) {
+									currentEnv = nullEnv;
+									earlyEnd = this.pushScanData(charStart, this.charAt, FMT_BASE);
+								} else if (id_type is Number) {
+									currentEnv = nullEnv;
+									earlyEnd = this.pushScanData(charStart, this.charAt, id_type);
+								} else if (id_type is Dictionary) {
+									currentEnv = id_type;
+									earlyEnd = this.pushScanData(charStart, this.charAt, FMT_LIBRARY_WORD);
+								}
 							} else {
 								if (id_type is Number) {
 									earlyEnd = this.pushScanData(charStart, this.charAt, id_type);
@@ -788,6 +844,7 @@ package crossbridge.lua
 									earlyEnd = this.pushScanData(charStart, this.charAt, FMT_BASE);
 								}
 							}
+							ptr = ptr2;
 							break;
 						}
 						case CHARTYPE_NUMSTART: {
@@ -809,6 +866,78 @@ package crossbridge.lua
 			} finally {
 				//trace("Freed");
 				CModule.free(str_ptr);
+			}
+		}
+		
+		// recover identifier environment from a location.
+		// should recover to the environment of the current scan index.
+		private function recoverIdentifierEnvironment() : void
+		{
+			// push back until encountering globals.
+			currentEnv = globals;
+			var thisScanIndex:int = this.scanIndex - 1;
+			if (thisScanIndex < 0) {return;}
+			//trace("Recovering identifier environment");
+			//trace("scanIndex: " + thisScanIndex);
+			var entry:LTF_FormatEntry = this.scanData[thisScanIndex]; // this will have been copied in.
+			var shouldBeSeparator:Boolean = entry.formatType == FMT_BASE;
+			while (true) {
+				if (shouldBeSeparator) {
+					if (entry.formatType != FMT_BASE) {break;}
+					if ((entry.charEnd - entry.charStart) > 1) {
+						break;
+					} else {
+						if (this.text.charCodeAt(entry.charStart) != CHAR_DOT) {
+							break;
+						}
+					}
+				} else { // should be identifier libword.
+					if (entry.formatType != FMT_LIBRARY_WORD) {break;}
+				}
+				shouldBeSeparator = !shouldBeSeparator;
+				if (thisScanIndex > 0) {
+					thisScanIndex--;
+					entry = this.scanData[thisScanIndex];
+				} else {
+					break;
+				}
+			}
+			//trace("  _G");
+			if (thisScanIndex == (this.scanIndex - 1)) { // broke immediately
+				if (entry.formatType == FMT_BASE) {
+					if (this.text.charCodeAt(entry.charEnd - 1) == CHAR_DOT) { // it does end on a dot.
+						currentEnv = nullEnv;
+						//trace("  null env");
+					}
+					return;
+				} else if (entry.formatType == FMT_LIBRARY_WORD) { // Broke on hitting start.
+					// do nothing!
+				} else {
+					return;
+				}
+			}
+			// advance back to library word.
+			while (entry.formatType != FMT_LIBRARY_WORD && thisScanIndex < this.scanIndex) {
+				thisScanIndex++;
+				entry = this.scanData[thisScanIndex];
+			}
+			shouldBeSeparator = false;
+			while (thisScanIndex < this.scanIndex) {
+				if (!shouldBeSeparator) { // advance on library word.
+					var str:String = this.text.substring(entry.charStart, entry.charEnd);
+					var val:* = currentEnv[str];
+					if (val is Dictionary) {
+						//trace("  " + str);
+						currentEnv = val;
+					} else {
+						val = nullEnv;
+						//trace("  null env");
+						return;
+					}
+				}
+				shouldBeSeparator = !shouldBeSeparator;
+				thisScanIndex++;
+				entry = this.scanData[thisScanIndex];
 			}
 		}
 		

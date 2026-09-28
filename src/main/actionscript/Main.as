@@ -65,6 +65,9 @@ package {
 
 		internal function appInit(event:Event):void {
 			removeEventListener(Event.ADDED_TO_STAGE, appInit);
+			
+			LuaTextField.addLibraryWords(null, ["AS3Test"]);
+			LuaTextField.addLibraryWords("AS3Test", ["getTable","preAllocGetTable","setTableField","execute","callWith","flipBytes","getValues","playBytesAsSound"]);
 
 			runtimelabel = getTextField(5, 5, 790, 20);
 			inbox = getLuaTextField(5, 30, 790, 275);
