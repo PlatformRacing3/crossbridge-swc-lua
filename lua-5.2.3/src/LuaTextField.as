@@ -416,18 +416,18 @@ package crossbridge.lua
 		
 		private function frame_Listen(evt:Event) : void
 		{
-			var runtime:int;
+			//var runtime:int;
 			if (rescan) {
-				runtime = getTimer();
+				//runtime = getTimer();
 				this.scanText();
-				runtime = getTimer() - runtime;
-				trace("scan: " + runtime + "ms");
+				//runtime = getTimer() - runtime;
+				//trace("scan: " + runtime + "ms");
 			}
 			if (rehighlight) {
-				runtime = getTimer();
+				//runtime = getTimer();
 				this.highlight();
-				runtime = getTimer() - runtime;
-				trace("highlight: " + runtime + "ms");
+				//runtime = getTimer() - runtime;
+				//trace("highlight: " + runtime + "ms");
 			}
 		}
 		
