@@ -8645,6 +8645,13 @@ in the range <em>[0.5, 1)</em>
 (or zero when <code>x</code> is zero).
 
 
+<p>
+<hr><h3><a name="pdf-math.hash"><code>math.hash (&middot;&middot;&middot;)</code></a></h3>
+
+
+<p>
+Returns a value in the range <em>[0,1)</em>.
+When called with the same arguments, it will return the same result.
 
 
 <p>
@@ -10540,7 +10547,170 @@ Only decrement the reference when you are done using it, as it is possible for t
 
 Note that none of these functions do type checking for you.
 
+Within this section, <code>luaReference</code> refers to an arbitrary LuaReference object.
 
+<p>
+<hr><h3><a name="pdf-luaReference.type"><code>luaReference.type() : int</code></a></h3>
+
+<p>
+Returns an integer corresponding to the type of the Lua object. (see <code>LuaEnums</code>)
+
+<p>
+<hr><h3><a name="pdf-luaReference.typename"><code>luaReference.typename() : String</code></a></h3>
+
+<p>
+Returns a string with the type name of the Lua object, e.g <code>"table"</code> or <code>"userdata"</code>.
+
+<p>
+<hr><h3><a name="pdf-luaReference.clone"><code>luaReference.clone() : LuaReference</code></a></h3>
+
+<p>
+Returns a new <code>LuaReference</code> object that refers to the same Lua object.
+
+<p>
+<hr><h3><a name="pdf-luaReference.incRef"><code>luaReference.incRef() : void</code></a></h3>
+
+<p>
+Increases the reference count of the <code>LuaReference</code> object. This should be used if you need to store the Lua object somewhere.
+
+<p>
+<hr><h3><a name="pdf-luaReference.decRef"><code>luaReference.decRef() : void</code></a></h3>
+
+<p>
+Decreases the reference count of the <code>LuaReference</code> object. This may free the object. If this occurs, the <code>LuaReference</code> will refer to nil.
+
+<p>
+<hr><h3><a name="pdf-luaReference.getField"><code>luaReference.getField(key : Object) : Object</code></a></h3>
+
+<p>
+Equivalent to <code>ref[key]</code> in Lua.
+
+<p>
+The key is converted to the Lua equivalent to index the object. The result is converted to the Actionscript 3 equivalent.
+
+<p>
+This function can trigger <code>__index</code> metamethods. It is recommended to only use this function when called by a Lua function, in case an error is thrown.
+
+<p>
+<hr><h3><a name="pdf-luaReference.setField"><code>luaReference.setField(key : Object, value : Object) : void</code></a></h3>
+
+<p>
+Equivalent to <code>ref[key] = value</code> in Lua.
+
+<p>
+The key and value are converted to the Lua equivalent, or to a reference to the Actionscript object.
+
+<p>
+This function can trigger <code>__newindex</code> metamethods. It is recommended to only use this function when called by a Lua function, in case an error is thrown.
+
+<p>
+<hr><h3><a name="pdf-luaReference.call"><code>luaReference.call(&middot;&middot;&middot;) : Array</code></a></h3>
+
+<p>
+Equivalent to <code>ref(...)</code> in Lua. All arguments are converted to Lua equivalents.
+
+<p>
+Returns an Array, where <code>arr[0]</code> is the error code.
+If there is no error, <code>arr[0]</code> will be 0, and the rest of the array will be the AS3 equivalents to all values returned by the function.
+Otherwise, <code>arr[0]</code> will be something else, and <code>arr[1]</code> will be the error message.
+
+<p>
+This function can trigger <code>__call</code> metamethods. Note that this can return LuaReference objects, which could leak memory if this is not handled.
+
+<p>
+<hr><h3><a name="pdf-luaReference.execute"><code>luaReference.execute(&middot;&middot;&middot;) : Array</code></a></h3>
+
+<p>
+Equivalent to <code>ref(...)</code> in Lua. All arguments are converted to Lua equivalents.
+This version throws away all values returned by the function, which is useful when not handling any return values.
+
+<p>
+Returns an Array, where <code>arr[0]</code> is the error code.
+If there is no error, <code>arr[0]</code> will be 0.
+Otherwise, <code>arr[0]</code> will be something else, and <code>arr[1]</code> will be the error message.
+
+<p>
+This function can trigger <code>__call</code> metamethods.
+
+<p>
+<hr><h3><a name="pdf-luaReference.checkType"><code>luaReference.checkType(expected:int, arg:int = -1, fname:String = null) : void</code></a></h3>
+
+<p>
+Checks the type of the Lua object, throwing an error if it is not the expected type. (see <code>LuaEnums</code>)
+<p>
+The argument number and function name can be provided for additional error information.
+
+
+
+
+<p>
+<hr><h3><a name="pdf-luaReference.toString"><code>luaReference.toString() : String</code></a></h3>
+
+<p>
+Returns a reasonable string conversion. Calls <code>__tostring</code> metamethod if it exists. It is recommended to only use this function when called by a Lua function, in case an error is thrown.
+
+
+<h2>7.3 &ndash; <a name="7.3">Lua Interaction with Actionscript 3</a></h2>
+This section describes the general behavior of Lua interactions with Actionscript 3 objects.
+
+<p>
+<h3><code>flash</code> Objects</h3>
+
+<p>
+Actionscript 3 objects that are not converted to Lua objects will appear in Lua as a <code>flash</code> userdata object.
+<p> 
+These objects have a number of metamethods to allow Lua to interact with these objects easily.
+For example, Lua can index a <code>flash</code> object as easily as a table, although at a greater performance cost.
+
+<p> 
+As a result, it is quite easy to write Actionscript 3 APIs, as you can just write a normal AS3 function for Lua to call.
+<p>
+<b>WARNING: Lua can access as much from an object as Actionscript 3 code can! Care must be taken to not expose more than you intend to when writing Actionscript 3 APIs.</b> 
+
+
+<p>
+<h3>Conversions from Lua to Actionscript 3</h3>
+
+<p>
+The following types are automatically converted to the shown Actionscript 3 equivalent when entering AS3.
+All other types are converted to LuaReference.
+
+<ul>
+
+<li><b><code>number</code> :</b> Number </li>
+<li><b><code>string</code> :</b> String </li>
+<li><b><code>boolean</code> :</b> Boolean </li>
+<li><b><code>flash</code> :</b> <code>*</code></li>
+<li><b><code>buffer</code> :</b> ByteArray </li>
+</ul>
+
+<p>
+Additional conversions for <code>userdata</code> objects can be added to this list via the <code>__as3</code> metamethod.
+
+<p>
+Note that <code>string</code> -> <code>String</code> conversions can lose data, as Actionscript 3 <code>String</code>s are UTF-8 compliant, while Lua strings can be any sequence of bytes.
+
+<p>
+<h3>Conversions from Actionscript 3 to Lua</h3>
+
+<p>
+The following types are automatically converted to the shown Lua equivalent when entering Lua.
+All other types are converted to flash objects.
+
+<ul>
+
+<li><b><code>Number</code> :</b> number </li>
+<li><b><code>String</code> :</b> string </li>
+<li><b><code>Boolean</code> :</b> boolean </li>
+<li><b><code>ByteArray</code> :</b> buffer </li>
+<li><b><code>LuaReference</code> :</b> any </li>
+</ul>
+
+<p>
+Additional conversions can be added to this list from Lua via <code>flash.registerConversion</code>.
+This function should only be used from trusted code.
+<p>
+If running user code, it is recommended to register a conversion for <code>Class</code> objects to prevent Lua from causing issues.
 
 
 

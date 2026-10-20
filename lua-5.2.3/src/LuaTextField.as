@@ -199,7 +199,7 @@ package crossbridge.lua
 									"setupvalue","setuservalue","traceback","upvalueid","upvaluejoin"]);
 			addLibraryWords("flash", ["getclass","gettimer","new","registerConversion","toarray","toobject","trace","type"]);
 			addLibraryWords("io", ["close","flush","input","lines","open","output","popen","read","stderr","stdin","stdout","tmpfile","type","write"]);
-			addLibraryWords("math",["abs","acos","asin","atan","atan2","ceil","clamp","cos","cosh","deg","exp","floor","fmod","frexp","huge","isnan","ldexp","lerp",
+			addLibraryWords("math",["abs","acos","asin","atan","atan2","ceil","clamp","cos","cosh","deg","exp","floor","fmod","frexp","hash","huge","isnan","ldexp","lerp",
 									"log","log10","max","min","modf","nan","pi","pow","rad","random","randomseed","round","sign","sin","sinh","sqrt","tan","tanh"]);
 			addLibraryWords("os",["clock","date","difftime","execute","exit","getenv","remove","rename","setlocale","time","tmpname"]);
 			addLibraryWords("package",["config","cpath","loaded","loaders","loadlib","path","preload","searchers","searchpath","seeall"]);

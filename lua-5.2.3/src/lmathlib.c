@@ -16,8 +16,6 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-#include "AS3/AS3.h"
-
 
 #undef PI
 #define PI	((lua_Number)(3.1415926535897932384626433832795))
@@ -292,6 +290,156 @@ static int math_isnan (lua_State *L) {
   return 1;
 }
 
+// small, fast 64 bit hash function (version 2), with streaming api.
+//
+// https://github.com/N-R-K/ChibiHash
+//
+// Usage
+// =====
+// ChibiHash64Ctx ctx = chibihash64_init(seed);
+// chibihash64_append(&ctx, "hello, ", 7);
+// chibihash64_append(&ctx, "world!", 6);
+// uint64_t hash = chibihash64_finish(&ctx);
+//
+// This is free and unencumbered software released into the public domain.
+// For more information, please refer to <https://unlicense.org/>
+
+typedef unsigned long long int uint64_t;
+typedef unsigned char uint8_t;
+
+typedef struct {
+	uint64_t  h[4];
+	uint8_t   buf[32];
+	int       buf_len;
+	int       total_len;
+	uint64_t  seed;
+} ChibiHash64Ctx;
+
+static inline uint64_t chibihash64__load32le(const unsigned char *p)
+{
+	return (uint64_t)p[0] <<  0 | (uint64_t)p[1] <<  8 |
+	       (uint64_t)p[2] << 16 | (uint64_t)p[3] << 24;
+}
+static inline uint64_t chibihash64__load64le(const unsigned char *p)
+{
+	return chibihash64__load32le(p) | (chibihash64__load32le(p+4) << 32);
+}
+static inline uint64_t chibihash64__rotl(uint64_t x, int n)
+{
+	return (x << n) | (x >> (-n & 63));
+}
+
+static inline void
+chibihash64__stream_block(uint64_t h[4], const unsigned char *p)
+{
+	const uint64_t K = 0x2B7E151628AED2A7ULL;
+	int i = 0;
+	for (i = 0; i < 4; ++i) {
+		uint64_t stripe = chibihash64__load64le(p);
+		h[i] = (stripe + h[i]) * K;
+		h[(i+1)&3] += chibihash64__rotl(stripe, 27);
+		p += 8;
+	}
+}
+
+static inline ChibiHash64Ctx
+chibihash64_init(uint64_t seed)
+{
+	const uint64_t K = 0x2B7E151628AED2A7ULL; // digits of e
+	uint64_t seed2 = chibihash64__rotl(seed-K, 15) + chibihash64__rotl(seed-K, 47);
+	ChibiHash64Ctx ctx = {0};
+	ctx.h[0] = seed;
+	ctx.h[1] = seed+K;
+	ctx.h[2] = seed2;
+	ctx.h[3] = seed2+(K*K^K);
+	ctx.seed = seed;
+	return ctx;
+}
+
+static inline void
+chibihash64_append(ChibiHash64Ctx *ctx, void *keyIn, ptrdiff_t len)
+{
+	const unsigned char *p = (const unsigned char *)keyIn;
+	ptrdiff_t l = len;
+
+	ctx->total_len += len;
+
+	for (; l > 0 && ctx->buf_len < 32; --l, ++p) {
+		ctx->buf[ctx->buf_len++] = *p;
+	}
+
+	if (ctx->buf_len == 32) {
+		chibihash64__stream_block(ctx->h, ctx->buf);
+		ctx->buf_len = 0;
+	}
+
+	for (; l >= 32; l -= 32, p += 32) {
+		chibihash64__stream_block(ctx->h, p);
+	}
+
+	for (; l > 0; --l, ++p) {
+		ctx->buf[ctx->buf_len++] = *p;
+	}
+}
+
+static inline uint64_t
+chibihash64_finish(ChibiHash64Ctx *ctx)
+{
+	const uint64_t K = 0x2B7E151628AED2A7ULL;
+	const uint8_t *p = ctx->buf;
+	ptrdiff_t l = ctx->buf_len;
+	uint64_t h[4] = { ctx->h[0], ctx->h[1], ctx->h[2], ctx->h[3] };
+
+	for (; l >= 8; l -= 8, p += 8) {
+		h[0] ^= chibihash64__load32le(p+0); h[0] *= K;
+		h[1] ^= chibihash64__load32le(p+4); h[1] *= K;
+	}
+
+	if (l >= 4) {
+		h[2] ^= chibihash64__load32le(p);
+		h[3] ^= chibihash64__load32le(p + l - 4);
+	} else if (l > 0) {
+		h[2] ^= p[0];
+		h[3] ^= p[l/2] | ((uint64_t)p[l-1] << 8);
+	}
+
+	h[0] += chibihash64__rotl(h[2] * K, 31) ^ (h[2] >> 31);
+	h[1] += chibihash64__rotl(h[3] * K, 31) ^ (h[3] >> 31);
+	h[0] *= K; h[0] ^= h[0] >> 31;
+	h[1] += h[0];
+
+	uint64_t x = (uint64_t)ctx->total_len * K;
+	x ^= chibihash64__rotl(x, 29);
+	x += ctx->seed;
+	x ^= h[1];
+
+	x ^= chibihash64__rotl(x, 15) ^ chibihash64__rotl(x, 42);
+	x *= K;
+	x ^= chibihash64__rotl(x, 13) ^ chibihash64__rotl(x, 31);
+
+	return x;
+}
+
+//  ***  HASH IMPLEMENTATION END  ***  //
+
+typedef union {double d; uint64_t u64;} uint64_double; // For reinterpreting values between uint64_t and double.
+
+static int math_hash (lua_State *L) {
+	ChibiHash64Ctx ctx = chibihash64_init(0x8FE89EC4F0716462ULL); // random number. Idk this just needs to be constant.
+  // chibihash64_append(&ctx, "hello, ", 7);
+  // chibihash64_append(&ctx, "world!", 6);
+  // uint64_t hash = chibihash64_finish(&ctx);
+  int n = lua_gettop(L);
+	int i = 0;
+	for (i = 0; i < n; i++) {
+		lua_Number v = luaL_checknumber(L, i + 1);
+		chibihash64_append(&ctx, &v, 8);
+	}
+	uint64_double result;
+	result.u64 = ((chibihash64_finish(&ctx) >>12) | 0x3ff0000000000000ULL);
+	lua_pushnumber(L, result.d - 1.0);
+  return 1;
+}
 
 static const luaL_Reg mathlib[] = {
   {"abs",   math_abs},
@@ -329,6 +477,7 @@ static const luaL_Reg mathlib[] = {
   {"round", math_round},
   {"lerp", math_lerp},
   {"isnan", math_isnan},
+	{"hash", math_hash},
   {NULL, NULL}
 };
 
