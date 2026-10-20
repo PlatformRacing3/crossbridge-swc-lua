@@ -10713,6 +10713,90 @@ This function should only be used from trusted code.
 If running user code, it is recommended to register a conversion for <code>Class</code> objects to prevent Lua from causing issues.
 
 
+<h2>7.4 &ndash; <a name="7.4">The LuaTextField Class</a></h2>
+<p>
+The <code>LuaTextField</code> class does not pertain to the actual execution of Lua code.
+
+<p>
+Instead, it provides syntax highlighting for Lua code, which is useful for projects where user code is written in the Flash application.<br>
+It extends the <code>TextField</code> class.
+
+<p>
+The highlighter highlights in 6 different categories:
+
+<ul>
+<li><b><code>Base</code> :</b> Anything not part of the other categories. </li>
+<li><b><code>String</code> :</b> String literals </li>
+<li><b><code>Number</code> :</b> Number literals, as well as <code>true</code>, <code>false</code>, and <code>nil</code> </li>
+<li><b><code>Keyword</code> :</b> Key words </li>
+<li><b><code>Library</code> :</b> Global library identifiers, such as <code>math</code>, or <code>unpack</code> </li>
+<li><b><code>Comment</code> :</b> Comments </li>
+</ul>
+
+<p>
+The words identified by the Library category are conditional on previous words, so <code>sin</code> will only highlight if part of <code>math.sin</code>.<br>
+The words identified by the Library category can be changed, to match with your provided environment. By default, they match the built in environment.<br>
+The library words are stored in the class, and apply to all <code>LuaTextField</code> objects.
+
+<p>
+<hr><h3><a name="pdf-LuaTextField.addLibraryWords"><code>LuaTextField.addLibraryWords(table:String = null, words:Array = null) : void</code></a></h3>
+
+<p>
+Adds all words in the <code>words</code> Array to be highlighted, conditional on the provided <code>table</code> string.<br>
+If no <code>table</code> string is provided, the global environment is assumed.<br>
+Examples are provided below.
+<pre>
+		ex. addLibraryWords(null, ["assert", ..., "xpcall"]); // adds to global table.
+		ex. addLibraryWords("math",["abs", ..., "tanh"]); // adds to math table
+		ex. addLibraryWords("game.level", ["stuff"]); // adds to game.level
+</pre>
+
+<p>
+<hr><h3><a name="pdf-LuaTextField.removeLibraryWords"><code>LuaTextField.removeLibraryWords(table:String = null, words:Array = null) : void</code></a></h3>
+
+<p>
+Removes all words in the <code>words</code> Array from highlighting, within the environment of the provided <code>table</code> string.<br>
+If no <code>table</code> string is provided, the global environment is assumed.
+
+<p>
+<hr><h3><a name="pdf-LuaTextField.clearLibraryWords"><code>LuaTextField.clearLibraryWords() : void</code></a></h3>
+
+<p>
+Clears all library words from highlighting.<br>
+This is useful for setting up your environment from scratch.
+
+
+<p>
+<hr><h3><a name="pdf-new_LuaTextField"><code>new LuaTextField(size:int = 12)</code></a></h3>
+
+<p>
+Creates a new <code>LuaTextField</code> with the given text size, with default coloring and font.<br>
+The default font is Courier New.
+
+<p>
+<hr><h3><a name="pdf-luaTextField.setColors"><code>luaTextField.setColors(colors : Object) : void</code></a></h3>
+
+<p>
+Sets new colors for each category based on the colors in the provided <code>colors</code> object.<br>
+Any colors not provided will keep their old color.<br>
+The correct keys for the <code>colors</code> object are below, along with their default colors.
+
+<ul>
+<li><b><code>"base"</code> :</b><font color="#000000"> #000000 </font> </li>
+<li><b><code>"string"</code> :</b><font color="#027420"> #027240 </font> </li>
+<li><b><code>"number"</code> :</b><font color="#6C21C6"> #6C21C6 </font> </li>
+<li><b><code>"keyword"</code> :</b><font color="#002DD6"> #002DD6 </font> </li>
+<li><b><code>"libword"</code> :</b><font color="#BE1A61"> #BE1A61 </font> </li>
+<li><b><code>"comment"</code> :</b><font color="#6A6F81"> #6A6F81 </font> </li>
+</ul>
+
+<p>
+<hr><h3><a name="pdf-luaTextField.forceRescan"><code>luaTextField.forceRescan() : void</code></a></h3>
+
+<p>
+Forces the highlighter to rescan the entire text. This is useful if you change the list of library words when a LuaTextField is active.
+<p>
+This also gets called when you set the <code>text</code> property of the text field.
 
 <h1>8 &ndash; <a name="8">Incompatibilities with the Previous Version</a></h1>
 
