@@ -28,6 +28,7 @@
 
 #define hasjumps(e)	((e)->t != (e)->f)
 
+#include "AS3/AS3.h"
 
 static int isnumeral(expdesc *e) {
   return (e->k == VKNUM && e->t == NO_JUMP && e->f == NO_JUMP);
@@ -328,14 +329,18 @@ int luaK_numberK (FuncState *fs, lua_Number r) {
   lua_State *L = fs->ls->L;
   TValue o;
   setnvalue(&o, r);
-  if (r == 0 || luai_numisnan(NULL, r)) {  /* handle -0 and NaN */
+	int isnan = 0;
+	inline_as3("%0 = int(%1 != %1);" : "=r"(isnan) : "r"(r)); // the stupid fucking compiler...
+  if (r == 0 || isnan) {  /* handle -0 and NaN */
     /* use raw representation as key to avoid numeric problems */
     setsvalue(L, L->top++, luaS_newlstr(L, (char *)&r, sizeof(r)));
     n = addk(fs, L->top - 1, &o);
     L->top--;
   }
   else
+	{
     n = addk(fs, &o, &o);  /* regular case */
+	}
   return n;
 }
 
