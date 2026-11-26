@@ -718,7 +718,7 @@ void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k) {
 static int constfolding (OpCode op, expdesc *e1, expdesc *e2) {
   lua_Number r;
   if (!isnumeral(e1) || !isnumeral(e2)) return 0;
-  if ((op == OP_DIV || op == OP_MOD) && e2->u.nval == 0)
+  if ((op == OP_DIV || op == OP_MOD || op == OP_IDIV) && e2->u.nval == 0)
     return 0;  /* do not attempt to divide by 0 */
   r = luaO_arith(op - OP_ADD + LUA_OPADD, e1->u.nval, e2->u.nval);
   e1->u.nval = r;
@@ -803,7 +803,7 @@ void luaK_infix (FuncState *fs, BinOpr op, expdesc *v) {
       break;
     }
     case OPR_ADD: case OPR_SUB: case OPR_MUL: case OPR_DIV:
-    case OPR_MOD: case OPR_POW: {
+    case OPR_MOD: case OPR_POW: case OPR_IDIV: {
       if (!isnumeral(v)) luaK_exp2RK(fs, v);
       break;
     }
@@ -847,7 +847,7 @@ void luaK_posfix (FuncState *fs, BinOpr op,
       break;
     }
     case OPR_ADD: case OPR_SUB: case OPR_MUL: case OPR_DIV:
-    case OPR_MOD: case OPR_POW: {
+    case OPR_MOD: case OPR_POW: case OPR_IDIV: {
       codearith(fs, cast(OpCode, op - OPR_ADD + OP_ADD), e1, e2, line);
       break;
     }

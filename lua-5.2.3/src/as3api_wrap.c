@@ -1823,11 +1823,26 @@ void _wrap_LUA_OPMOD() {
 }
 
 
+__attribute__((annotate("as3sig:public function _wrap_LUA_OPIDIV():int")))
+void _wrap_LUA_OPIDIV() {
+  int result ;
+  
+  result = 5;
+  {
+    AS3_DeclareVar(asresult, int);
+    AS3_CopyScalarToVar(asresult, result);
+  }
+  {
+    AS3_ReturnAS3Var(asresult);
+  }
+}
+
+
 __attribute__((annotate("as3sig:public function _wrap_LUA_OPPOW():int")))
 void _wrap_LUA_OPPOW() {
   int result ;
   
-  result = 5;
+  result = 6;
   {
     AS3_DeclareVar(asresult, int);
     AS3_CopyScalarToVar(asresult, result);
@@ -1842,7 +1857,7 @@ __attribute__((annotate("as3sig:public function _wrap_LUA_OPUNM():int")))
 void _wrap_LUA_OPUNM() {
   int result ;
   
-  result = 6;
+  result = 7;
   {
     AS3_DeclareVar(asresult, int);
     AS3_CopyScalarToVar(asresult, result);

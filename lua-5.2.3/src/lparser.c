@@ -4,7 +4,6 @@
 ** See Copyright Notice in lua.h
 */
 
-
 #include <string.h>
 
 #define lparser_c
@@ -1002,6 +1001,7 @@ static BinOpr getbinopr (int op) {
     case '/': return OPR_DIV;
     case '%': return OPR_MOD;
     case '^': return OPR_POW;
+    case TK_IDIV: return OPR_IDIV;
     case TK_CONCAT: return OPR_CONCAT;
     case TK_NE: return OPR_NE;
     case TK_EQ: return OPR_EQ;
@@ -1015,12 +1015,26 @@ static BinOpr getbinopr (int op) {
   }
 }
 
+//TK_CADD, TK_CSUB, TK_CMUL, TK_CDIV, TK_CMOD, TK_CPOW, TK_CIDIV, TK_CCONCAT
+static BinOpr getCompoundOpr (int op) {
+  switch (op) {
+    case TK_CADD: return OPR_ADD;
+    case TK_CSUB: return OPR_SUB;
+    case TK_CMUL: return OPR_MUL;
+    case TK_CDIV: return OPR_DIV;
+    case TK_CMOD: return OPR_MOD;
+    case TK_CPOW: return OPR_POW;
+    case TK_CIDIV: return OPR_IDIV;
+    case TK_CCONCAT: return OPR_CONCAT;
+    default: return OPR_NOBINOPR;
+  }
+}
 
 static const struct {
   lu_byte left;  /* left priority for each binary operator */
   lu_byte right; /* right priority */
 } priority[] = {  /* ORDER OPR */
-   {6, 6}, {6, 6}, {7, 7}, {7, 7}, {7, 7},  /* `+' `-' `*' `/' `%' */
+   {6, 6}, {6, 6}, {7, 7}, {7, 7}, {7, 7}, {7, 7},  /* `+' `-' `*' `/' `%' '//' */
    {10, 9}, {5, 4},                 /* ^, .. (right associative) */
    {3, 3}, {3, 3}, {3, 3},          /* ==, <, <= */
    {3, 3}, {3, 3}, {3, 3},          /* ~=, >, >= */
@@ -1132,11 +1146,12 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
   }
 }
 
+static void n_assignment (LexState *ls, struct LHS_assign *lh, int nvars);
+static void compound_assign (LexState *ls, struct LHS_assign *lh, int nvars, int op);
 
-static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
-  expdesc e;
+static void var_list (LexState *ls, struct LHS_assign *lh, int nvars) {
   check_condition(ls, vkisvar(lh->v.k), "syntax error");
-  if (testnext(ls, ',')) {  /* assignment -> ',' suffixedexp assignment */
+  if (testnext(ls, ',')) { // varlist -> varlist ',' var
     struct LHS_assign nv;
     nv.prev = lh;
     suffixedexp(ls, &nv.v);
@@ -1144,11 +1159,16 @@ static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
       check_conflict(ls, lh, &nv.v);
     checklimit(ls->fs, nvars + ls->L->nCcalls, LUAI_MAXCCALLS,
                     "C levels");
-    assignment(ls, &nv, nvars+1);
+    var_list(ls, &nv, nvars+1);
+  } else {
+    n_assignment(ls, lh, nvars);
   }
-  else {  /* assignment -> `=' explist */
-    int nexps;
-    checknext(ls, '=');
+}
+
+static void n_assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
+  expdesc e;
+  int nexps;
+  if (testnext(ls, '=')) {
     nexps = explist(ls, &e);
     if (nexps != nvars) {
       adjust_assign(ls, nvars, nexps, &e);
@@ -1158,13 +1178,48 @@ static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
     else {
       luaK_setoneret(ls->fs, &e);  /* close last expression */
       luaK_storevar(ls->fs, &lh->v, &e);
-      return;  /* avoid default */
+      lh = lh->prev; /* avoid default on this one. */
     }
+    for (; lh; lh = lh->prev) { // for all previous ones.
+      init_exp(&e, VNONRELOC, ls->fs->freereg-1);  /* default assignment */
+      luaK_storevar(ls->fs, &lh->v, &e);
+    }
+    return;
   }
-  init_exp(&e, VNONRELOC, ls->fs->freereg-1);  /* default assignment */
-  luaK_storevar(ls->fs, &lh->v, &e);
+  int op = getCompoundOpr(ls->t.token);
+  if (op == OPR_NOBINOPR) {
+    luaX_syntaxerror(ls, "expected valid assignment operator");
+  } else {
+    luaX_next(ls);
+  }
+  compound_assign(ls, lh, nvars, op); // start nexps at 0.
 }
 
+// singular compound assignment
+static void compound_assign (LexState *ls, struct LHS_assign *lh, int nvars, int op) {
+  expdesc e; // Stored copy of the thing.
+  expdesc e2; // Expression to operate e by.
+
+  if (nvars != 1) luaX_syntaxerror(ls, "invalid compound assignment (multiple assignment not supported)");
+  e = lh->v;
+  if (e.k != VLOCAL || op == OPR_CONCAT) {
+    if (e.k == VINDEXED) { // protect temporary values for indexing from being overwritten
+      if (e.u.ind.vt == VLOCAL && e.u.ind.t >= ls->fs->nactvar) luaK_reserveregs(ls->fs, 1); // Protect table.
+      if (!ISK(e.u.ind.idx) && e.u.ind.idx >= ls->fs->nactvar) luaK_reserveregs(ls->fs, 1); // Protect key.
+    }
+    luaK_exp2nextreg(ls->fs, &e);
+  }
+  expr(ls, &e2);
+  if (testnext(ls, ',')) luaX_syntaxerror(ls, "invalid compound assignment (multiple assignment not supported)");
+  luaK_setoneret(ls->fs, &e2);  /* close last expression */
+  luaK_posfix(ls->fs, (BinOpr) op, &e, &e2, ls->linenumber);
+  luaK_storevar(ls->fs, &lh->v, &e);
+  return;
+}
+
+/*
+multiple compound assignment will probably not be supported
+*/
 
 static int cond (LexState *ls) {
   /* cond -> exp */
@@ -1482,9 +1537,9 @@ static void exprstat (LexState *ls) {
   FuncState *fs = ls->fs;
   struct LHS_assign v;
   suffixedexp(ls, &v.v);
-  if (ls->t.token == '=' || ls->t.token == ',') { /* stat -> assignment ? */
+  if (ls->t.token == '=' || ls->t.token == ',' || getCompoundOpr(ls->t.token) != OPR_NOBINOPR) { /* stat -> assignment ? */
     v.prev = NULL;
-    assignment(ls, &v, 1);
+    var_list(ls, &v, 1);
   }
   else {  /* stat -> func */
     check_condition(ls, v.v.k == VCALL, "syntax error");

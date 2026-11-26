@@ -33,6 +33,7 @@ LUAI_DDEF const char *const luaP_opnames[NUM_OPCODES+1] = {
   "MUL",
   "DIV",
   "MOD",
+  "IDIV",
   "POW",
   "UNM",
   "NOT",
@@ -81,6 +82,7 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
  ,opmode(0, 1, OpArgK, OpArgK, iABC)		/* OP_MUL */
  ,opmode(0, 1, OpArgK, OpArgK, iABC)		/* OP_DIV */
  ,opmode(0, 1, OpArgK, OpArgK, iABC)		/* OP_MOD */
+ ,opmode(0, 1, OpArgK, OpArgK, iABC)		/* OP_IDIV */
  ,opmode(0, 1, OpArgK, OpArgK, iABC)		/* OP_POW */
  ,opmode(0, 1, OpArgR, OpArgN, iABC)		/* OP_UNM */
  ,opmode(0, 1, OpArgR, OpArgN, iABC)		/* OP_NOT */

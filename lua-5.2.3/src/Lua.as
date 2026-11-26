@@ -824,6 +824,10 @@ public class Lua {
 		return _wrap_LUA_OPMOD();
 	}
 
+	public static function get LUA_OPIDIV():int{
+		return _wrap_LUA_OPIDIV();
+	}
+
 	public static function get LUA_OPPOW():int{
 		return _wrap_LUA_OPPOW();
 	}

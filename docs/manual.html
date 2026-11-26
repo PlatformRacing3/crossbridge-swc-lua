@@ -72,8 +72,12 @@ Lua is free software,
 and is provided as usual with no guarantees,
 as stated in its license.
 The implementation described in this manual is available
-at Lua's official web site, <code>www.lua.org</code>.
+on github, at <code>github.com/PlatformRacing3/crossbridge-swc-lua</code>.
 
+<p>
+This implementation has some significant modifications from the original.
+The original implementation of Lua 5.2 is available
+at Lua's official web site, <code>www.lua.org</code>.
 
 <p>
 Like any other reference manual,
@@ -511,6 +515,14 @@ the <code>^</code> (exponentiation) operation.
 Behavior similar to the "add" operation,
 with the function <code>pow</code> (from the C&nbsp;math library)
 as the primitive operation.
+</li>
+
+<li><b>"idiv": </b>
+the <code>//</code> operation.
+
+Behavior similar to the "add" operation,
+with the operation
+<code>floor(o1/o2)</code> as the primitive operation.
 </li>
 
 <li><b>"unm": </b>
@@ -1188,10 +1200,12 @@ are reserved for variables used by Lua.
 The following strings denote other tokens:
 
 <pre>
-     +     -     *     /     %     ^     #
-     ==    ~=    &lt;=    &gt;=    &lt;     &gt;     =
-     (     )     {     }     [     ]     ::
-     ;     :     ,     .     ..    ...
+     +     -     *     /     %     ^     //
+     #     ==    ~=    &lt;=    &gt;=    &lt;     &gt;
+     =     (     )     {     }     [     ]
+     ::    ;     :     ,     .     ..    ...
+     +=    -=    *=    /=    %=    //=   ^=
+     ..=
 </pre>
 
 <p>
@@ -1831,8 +1845,27 @@ and so local variables can be declared in a chunk outside any explicit block.
 The visibility rules for local variables are explained in <a href="#3.5">&sect;3.5</a>.
 
 
-
-
+<h3>3.3.8 &ndash; <a name="3.3.8">Compound Assignments</a></h3><p>
+<p>
+This version of Lua allows compound assignments.
+A compound assignment reads a value, performs an operation with the result of an expression, and sets the result.
+<pre>
+	stat ::= var compoundop exp
+	compoundop ::= &lsquo;<b>+=</b>&rsquo; | &lsquo;<b>-=</b>&rsquo; | &lsquo;<b>*=</b>&rsquo; | &lsquo;<b>/=</b>&rsquo; | &lsquo;<b>//=</b>&rsquo; | &lsquo;<b>^=</b>&rsquo; | &lsquo;<b>%=</b>&rsquo; | &lsquo;<b>..=</b>&rsquo;
+</pre><p>
+For example, the code <code>a += 3</code>
+is equivalent to <code>a = a + 3</code>. <p>
+Any expressions on the left side are handled only once. For example, the code
+<pre>
+     a.t[f()] *= 2
+</pre><p>
+only evaluates <code>f()</code> and <code>a.t</code> once, and is equivalent to
+<pre>
+     local temptab = a.t
+     local tempkey = f()
+     temptab[tempkey] = temptab[tempkey] * 2
+</pre><p>
+Multiple compound assignment is not allowed.
 
 
 
@@ -1926,21 +1959,22 @@ or <b>nil</b> if <code>f</code> does not return any values.)
 Lua supports the usual arithmetic operators:
 the binary <code>+</code> (addition),
 <code>-</code> (subtraction), <code>*</code> (multiplication),
-<code>/</code> (division), <code>%</code> (modulo), and <code>^</code> (exponentiation);
+<code>/</code> (division), <code>//</code> (floor division), <code>%</code> (modulo), and <code>^</code> (exponentiation);
 and unary <code>-</code> (mathematical negation).
 If the operands are numbers, or strings that can be converted to
 numbers (see <a href="#3.4.2">&sect;3.4.2</a>),
-then all operations have the usual meaning.
+then all operations have the usual meaning.<br>
 Exponentiation works for any exponent.
-For instance, <code>x^(-0.5)</code> computes the inverse of the square root of <code>x</code>.
-Modulo is defined as
+For instance, <code>x^(-0.5)</code> computes the inverse of the square root of <code>x</code>.<br>
 
+Floor division (<code>//</code>) is a division that rounds the quotient towards minus infinity.<br>
+
+Modulo is defined as
 <pre>
      a % b == a - math.floor(a/b)*b
 </pre><p>
 That is, it is the remainder of a division that rounds
 the quotient towards minus infinity.
-
 
 
 
@@ -2116,7 +2150,7 @@ from lower to higher priority:
      &lt;     &gt;     &lt;=    &gt;=    ~=    ==
      ..
      +     -
-     *     /     %
+     *     /     //    %
      not   #     - (unary)
      ^
 </pre><p>
@@ -10704,6 +10738,7 @@ All other types are converted to flash objects.
 <li><b><code>Boolean</code> :</b> boolean </li>
 <li><b><code>ByteArray</code> :</b> buffer </li>
 <li><b><code>LuaReference</code> :</b> any </li>
+<li><b><code>LuaResultArray</code> :</b> ... </li>
 </ul>
 
 <p>
@@ -10711,6 +10746,9 @@ Additional conversions can be added to this list from Lua via <code>flash.regist
 This function should only be used from trusted code.
 <p>
 If running user code, it is recommended to register a conversion for <code>Class</code> objects to prevent Lua from causing issues.
+
+<p>
+<code>LuaResultArray</code> is a subclass of <code>Array</code> that allows Actionscript 3 functions called from Lua to return multiple results.
 
 
 <h2>7.4 &ndash; <a name="7.4">The LuaTextField Class</a></h2>
@@ -11036,6 +11074,7 @@ Here is the complete syntax of Lua in extended BNF.
 
 	stat ::=  &lsquo;<b>;</b>&rsquo; | 
 		 varlist &lsquo;<b>=</b>&rsquo; explist | 
+		 var compoundop exp | 
 		 functioncall | 
 		 label | 
 		 <b>break</b> | 
@@ -11092,6 +11131,8 @@ Here is the complete syntax of Lua in extended BNF.
 		 <b>and</b> | <b>or</b>
 
 	unop ::= &lsquo;<b>-</b>&rsquo; | <b>not</b> | &lsquo;<b>#</b>&rsquo;
+	
+	compoundop ::= &lsquo;<b>+=</b>&rsquo; | &lsquo;<b>-=</b>&rsquo; | &lsquo;<b>*=</b>&rsquo; | &lsquo;<b>/=</b>&rsquo; | &lsquo;<b>//=</b>&rsquo; | &lsquo;<b>^=</b>&rsquo; | &lsquo;<b>%=</b>&rsquo; | &lsquo;<b>..=</b>&rsquo;
 
 </pre>
 
@@ -11106,10 +11147,10 @@ Here is the complete syntax of Lua in extended BNF.
 <HR>
 <SMALL CLASS="footer">
 Last update:
-Thu Mar 21 12:58:59 BRT 2013
+Thu Nov 19 10:23:56 EST 2026
 </SMALL>
 <!--
-Last change: revised for Lua 5.2.2
+Last change: revised for crossbridge-swc-lua changes.
 -->
 
 </body></html>

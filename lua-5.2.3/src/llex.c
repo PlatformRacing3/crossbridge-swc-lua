@@ -38,7 +38,9 @@ static const char *const luaX_tokens [] = {
     "end", "false", "for", "function", "goto", "if",
     "in", "local", "nil", "not", "or", "repeat",
     "return", "then", "true", "until", "while",
-    "..", "...", "==", ">=", "<=", "~=", "::", "<eof>",
+    "..", "...", "==", ">=", "<=", "~=", "::", "//", 
+    "+=", "-=", "*=", "/=", "%=", "^=", "//=", "..=",
+    "<eof>",
     "<number>", "<name>", "<string>"
 };
 
@@ -410,8 +412,9 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         next(ls);
         break;
       }
-      case '-': {  /* '-' or '--' (comment) */
+      case '-': {  /* '-', '-=', or '--' (comment) */
         next(ls);
+        if (ls->current == '=') {next(ls); return TK_CSUB;} //lexerror(ls, "unexpected '-=': compound assignment is not supported.", 0);
         if (ls->current != '-') return '-';
         /* else is a comment */
         next(ls);
@@ -445,11 +448,13 @@ static int llex (LexState *ls, SemInfo *seminfo) {
       }
       case '<': {
         next(ls);
+        if (ls->current == '<') lexerror(ls, "unexpected '<<': bitwise ops are not supported.", 0);
         if (ls->current != '=') return '<';
         else { next(ls); return TK_LE; }
       }
       case '>': {
         next(ls);
+        if (ls->current == '>') lexerror(ls, "unexpected '>>': bitwise ops are not supported.", 0);
         if (ls->current != '=') return '>';
         else { next(ls); return TK_GE; }
       }
@@ -463,16 +468,64 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         if (ls->current != ':') return ':';
         else { next(ls); return TK_DBCOLON; }
       }
+      case '+': {
+        next(ls);
+        if (ls->current == '=') {next(ls); return TK_CADD;}
+        else return '+';
+      }
+      case '*': {
+        next(ls);
+        if (ls->current == '=') {next(ls); return TK_CMUL;}
+        else return '*';
+      }
+      case '^': {
+        next(ls);
+        if (ls->current == '=') {next(ls); return TK_CPOW;}
+        else return '^';
+      }
+      case '/': { /* '//', '//=', '/=', or just '/' */
+        next(ls);
+        if (ls->current == '=') {next(ls); return TK_CDIV;}
+        if (ls->current != '/') return '/';
+        else { 
+          next(ls); 
+          if (ls->current == '=') {next(ls); return TK_CIDIV;}
+          return TK_IDIV;
+        }
+      }
+      case '%': { /* '%', or '%=' */
+        next(ls);
+        if (ls->current == '=') {next(ls); return TK_CMOD;}
+        return '%';
+      }
       case '"': case '\'': {  /* short literal strings */
         read_string(ls, ls->current, seminfo);
         return TK_STRING;
       }
-      case '.': {  /* '.', '..', '...', or number */
+      case '|': { // catch confusion
+        next(ls);
+        if (ls->current != '|') lexerror(ls, "unexpected '|': bitwise ops are not supported.", 0);
+        else lexerror(ls, "unexpected '||': did you mean 'or'?", 0);
+      }
+      case '&': { // catch confusion
+        next(ls);
+        if (ls->current != '&') lexerror(ls, "unexpected '&': bitwise ops are not supported.", 0);
+        else lexerror(ls, "unexpected '&&': did you mean 'and'?", 0);
+      }
+      case '!': { // catch confusion
+        next(ls);
+        if (ls->current != '=') lexerror(ls, "unexpected '!': did you mean 'not'?", 0);
+        else lexerror(ls, "unexpected '!=': did you mean '~='?", 0);
+      }
+      case '.': {  /* '.', '..', '..=', '...', or number */
         save_and_next(ls);
         if (check_next(ls, ".")) {
-          if (check_next(ls, "."))
+          if (check_next(ls, ".")) {
             return TK_DOTS;   /* '...' */
-          else return TK_CONCAT;   /* '..' */
+          } else {
+            if (ls->current == '=') {next(ls); return TK_CCONCAT;}
+            return TK_CONCAT;   /* '..' */
+          }
         }
         else if (!lisdigit(ls->current)) return '.';
         /* else go through */

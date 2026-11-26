@@ -34,7 +34,7 @@ void luaT_init (lua_State *L) {
     "__index", "__newindex",
     "__gc", "__mode", "__len", "__eq",
     "__add", "__sub", "__mul", "__div", "__mod",
-    "__pow", "__unm", "__lt", "__le",
+    "__idiv", "__pow", "__unm", "__lt", "__le",
     "__concat", "__call", "__type", "__as3"
   };
   int i;

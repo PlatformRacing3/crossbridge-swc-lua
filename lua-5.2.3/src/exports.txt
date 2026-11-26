@@ -55,6 +55,7 @@ _wrap_LUA_OK
 _wrap_LUA_OPADD
 _wrap_LUA_OPDIV
 _wrap_LUA_OPEQ
+_wrap_LUA_OPIDIV
 _wrap_LUA_OPLE
 _wrap_LUA_OPLT
 _wrap_LUA_OPMOD
